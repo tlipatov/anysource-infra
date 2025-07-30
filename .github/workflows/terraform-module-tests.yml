@@ -97,7 +97,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "~1.6"
+          terraform_version: "~1.12"
 
       - name: Check if module has tests
         id: check-tests
