@@ -143,16 +143,28 @@ jobs:
     steps:
       - name: Test Summary
         run: |
+          echo "🧪 Terraform Module Test Results"
+          echo "Changed modules: ${{ needs.detect-changes.outputs.changed-modules }}"
+          echo "Test-modules job result: ${{ needs.test-modules.result }}"
+          echo ""
+          
+          # Write to step summary
           echo "## 🧪 Terraform Module Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Changed modules: ${{ needs.detect-changes.outputs.changed-modules }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           if [ "${{ needs.test-modules.result }}" = "success" ]; then
+            echo "✅ All module tests passed!"
             echo "✅ All module tests passed!" >> $GITHUB_STEP_SUMMARY
           elif [ "${{ needs.test-modules.result }}" = "failure" ]; then
+            echo "❌ Some module tests failed. Check the individual job results above."
             echo "❌ Some module tests failed. Check the individual job results above." >> $GITHUB_STEP_SUMMARY
             exit 1
           elif [ "${{ needs.test-modules.result }}" = "skipped" ]; then
+            echo "⏭️ No modules with tests were changed."
             echo "⏭️ No modules with tests were changed." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🤔 Unexpected test-modules result: ${{ needs.test-modules.result }}"
+            echo "🤔 Unexpected test-modules result: ${{ needs.test-modules.result }}" >> $GITHUB_STEP_SUMMARY
           fi
