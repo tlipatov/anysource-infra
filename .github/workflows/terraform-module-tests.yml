@@ -28,20 +28,20 @@ jobs:
         run: |
           # Get the base branch for comparison
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_REF="${{ github.event.pull_request.base.sha }}"
+            BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
           else
             BASE_REF="${{ github.event.before }}"
+            # If BASE_REF is empty or all zeros (initial commit), compare with HEAD~1
+            if [ -z "$BASE_REF" ] || [ "$BASE_REF" = "0000000000000000000000000000000000000000" ]; then
+              BASE_REF="HEAD~1"
+            fi
           fi
           
-          # If BASE_REF is empty or all zeros (initial commit), compare with HEAD~1
-          if [ -z "$BASE_REF" ] || [ "$BASE_REF" = "0000000000000000000000000000000000000000" ]; then
-            BASE_REF="HEAD~1"
-          fi
-          
+          echo "Event: ${{ github.event_name }}"
           echo "Comparing against: $BASE_REF"
           
           # Get list of changed files in modules directory
-          CHANGED_FILES=$(git diff --name-only $BASE_REF HEAD -- modules/ || echo "")
+          CHANGED_FILES=$(git diff --name-only $BASE_REF...HEAD -- modules/ || echo "")
           
           if [ -z "$CHANGED_FILES" ]; then
             echo "No changes detected in modules directory"
@@ -54,9 +54,9 @@ jobs:
           echo "$CHANGED_FILES"
           
           # Extract unique module names from changed files
-          CHANGED_MODULES=$(echo "$CHANGED_FILES" | grep '^modules/' | cut -d'/' -f2 | sort -u)
+          CHANGED_MODULES=$(echo "$CHANGED_FILES" | grep '^modules/' | cut -d'/' -f2 | sort -u | tr '\n' ' ')
           
-          echo "Changed modules: $CHANGED_MODULES"
+          echo "Changed modules (raw): $CHANGED_MODULES"
           
           # Check if we have any modules
           if [ -z "$CHANGED_MODULES" ]; then
@@ -66,8 +66,8 @@ jobs:
             exit 0
           fi
           
-          # Convert to JSON array format using jq for proper formatting
-          MODULES_JSON=$(echo "$CHANGED_MODULES" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          # Convert to JSON array format - split by spaces and create JSON array
+          MODULES_JSON=$(echo "$CHANGED_MODULES" | tr ' ' '\n' | grep -v '^$' | jq -R -s -c 'split("\n") | map(select(length > 0))')
           
           echo "modules=$MODULES_JSON" >> $GITHUB_OUTPUT
           echo "any=true" >> $GITHUB_OUTPUT
