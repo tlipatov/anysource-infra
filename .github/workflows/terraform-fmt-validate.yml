@@ -27,13 +27,16 @@ jobs:
         run: |
           echo "🔍 Checking Terraform formatting across entire repository..."
 
-          # Check formatting recursively
+          # Check formatting recursively and capture exit code
+          set +e  # Don't exit on non-zero return codes
           terraform fmt -check -diff -recursive .
+          fmt_exit_code=$?
+          set -e  # Re-enable exit on error
 
-          if [ $? -eq 0 ]; then
+          if [ $fmt_exit_code -eq 0 ]; then
             echo "✅ All Terraform files are properly formatted"
             echo "fmt_status=success" >> $GITHUB_OUTPUT
-          else
+          elif [ $fmt_exit_code -eq 3 ]; then
             echo "⚠️ Some Terraform files are not properly formatted"
             echo ""
             echo "To fix formatting issues, run:"
@@ -41,6 +44,10 @@ jobs:
             echo ""
             echo "::warning::Terraform files need formatting. Run 'terraform fmt -recursive .' to fix."
             echo "fmt_status=warning" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Terraform fmt failed with unexpected exit code: $fmt_exit_code"
+            echo "fmt_status=error" >> $GITHUB_OUTPUT
+            exit 1
           fi
         id: fmt-check
 
