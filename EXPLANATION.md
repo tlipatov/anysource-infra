@@ -17,3 +17,15 @@ This Terraform infrastructure stack prioritizes stability and reliability throug
 **Documentation Through Testing**: Test files serve as living documentation, showing users exactly how modules should be configured and what outputs to expect. This is particularly valuable in public repositories where clear usage examples are crucial.
 
 The testing-first approach ensures this infrastructure remains a reliable, stable foundation that the community can trust and build upon.
+
+## Project Requirements Adaptation
+
+### Original Task Scope vs. Implementation
+
+The original 3-hour project specification requested **Options 1-3**: deployment automation, developer experience enhancements, and state management. Given this repository's public-facing nature, we instead focused on **Option 4 (Testing & Validation)** with these specific adaptations:
+
+**What We Implemented**: Comprehensive unit testing framework using Terraform's native test capabilities, providing validation without requiring customer credentials or environment-specific configurations.
+
+**What We Recommend**: Transform this codebase into a standalone module library that customers can integrate into their own infrastructure workflows, rather than attempting deployment automation that cannot work in public repositories.
+
+**Strategic Value**: This approach serves more customers across diverse deployment strategies than environment-specific automation, creating a robust foundation for public consumption while maintaining security and flexibility.
