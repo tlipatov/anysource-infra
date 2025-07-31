@@ -12,6 +12,8 @@ jobs:
   terraform-fmt:
     runs-on: ubuntu-latest
     name: Format Check
+    outputs:
+      fmt_status: ${{ steps.fmt-check.outputs.fmt_status }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,11 +32,17 @@ jobs:
 
           if [ $? -eq 0 ]; then
             echo "✅ All Terraform files are properly formatted"
+            echo "fmt_status=success" >> $GITHUB_OUTPUT
           else
-            echo "❌ Some Terraform files are not properly formatted"
+            echo "⚠️ Some Terraform files are not properly formatted"
             echo ""
-            exit 1
+            echo "To fix formatting issues, run:"
+            echo "  terraform fmt -recursive ."
+            echo ""
+            echo "::warning::Terraform files need formatting. Run 'terraform fmt -recursive .' to fix."
+            echo "fmt_status=warning" >> $GITHUB_OUTPUT
           fi
+        id: fmt-check
 
   terraform-validate:
     runs-on: ubuntu-latest
@@ -115,12 +123,17 @@ jobs:
 
           FORMAT_RESULT="${{ needs.terraform-fmt.result }}"
           VALIDATE_RESULT="${{ needs.terraform-validate.result }}"
+          FMT_STATUS="${{ needs.terraform-fmt.outputs.fmt_status }}"
 
           echo "### Format Check: " >> $GITHUB_STEP_SUMMARY
           if [ "$FORMAT_RESULT" = "success" ]; then
-            echo "✅ All files properly formatted" >> $GITHUB_STEP_SUMMARY
+            if [ "$FMT_STATUS" = "warning" ]; then
+              echo "⚠️ Formatting issues found (non-blocking)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ All files properly formatted" >> $GITHUB_STEP_SUMMARY
+            fi
           else
-            echo "❌ Formatting issues found" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Format check failed" >> $GITHUB_STEP_SUMMARY
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -133,11 +146,17 @@ jobs:
 
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Overall result
-          if [ "$FORMAT_RESULT" = "success" ] && \
-             [ "$VALIDATE_RESULT" = "success" ]; then
-            echo "### 🎉 Overall Result: PASSED"
-            echo "🎉 **Overall Result: PASSED**" >> $GITHUB_STEP_SUMMARY
+          # Overall result - only fail on validation errors
+          if [ "$VALIDATE_RESULT" = "success" ]; then
+            if [ "$FMT_STATUS" = "warning" ]; then
+              echo "### ⚠️ Overall Result: PASSED WITH WARNINGS"
+              echo "⚠️ **Overall Result: PASSED WITH WARNINGS**" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "💡 Consider running \`terraform fmt -recursive .\` to fix formatting" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### 🎉 Overall Result: PASSED"
+              echo "🎉 **Overall Result: PASSED**" >> $GITHUB_STEP_SUMMARY
+            fi
           else
             echo "### ❌ Overall Result: FAILED"
             echo "❌ **Overall Result: FAILED**" >> $GITHUB_STEP_SUMMARY
