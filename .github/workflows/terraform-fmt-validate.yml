@@ -1,0 +1,171 @@
+---
+name: Terraform Format and Validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  terraform-fmt:
+    runs-on: ubuntu-latest
+    name: Format Check
+    outputs:
+      fmt_status: ${{ steps.fmt-check.outputs.fmt_status }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12"
+
+      - name: Check Terraform formatting
+        run: |
+          echo "🔍 Checking Terraform formatting across entire repository..."
+
+          # Check formatting recursively and capture exit code
+          set +e  # Don't exit on non-zero return codes
+          terraform fmt -check -diff -recursive .
+          fmt_exit_code=$?
+          set -e  # Re-enable exit on error
+
+          if [ $fmt_exit_code -eq 0 ]; then
+            echo "✅ All Terraform files are properly formatted"
+            echo "fmt_status=success" >> $GITHUB_OUTPUT
+          elif [ $fmt_exit_code -eq 1 ] || [ $fmt_exit_code -eq 3 ]; then
+            echo "⚠️ Some Terraform files are not properly formatted"
+            echo ""
+            echo "To fix formatting issues, run:"
+            echo "  terraform fmt -recursive ."
+            echo ""
+            echo "::warning::Terraform files need formatting. Run 'terraform fmt -recursive .' to fix."
+            echo "fmt_status=warning" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Terraform fmt failed with unexpected exit code: $fmt_exit_code"
+            echo "fmt_status=error" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+        id: fmt-check
+
+  terraform-validate:
+    runs-on: ubuntu-latest
+    name: Validate
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12"
+
+      - name: Validate Terraform configurations
+        run: |
+          echo "🔍 Validating Terraform configurations..."
+
+          # Find all directories containing .tf files
+          TERRAFORM_DIRS=$(find . -name "*.tf" -type f | \
+            xargs dirname | sort -u)
+
+          if [ -z "$TERRAFORM_DIRS" ]; then
+            echo "⏭️ No Terraform files found"
+            exit 0
+          fi
+
+          SUCCESS=true
+
+          for dir in $TERRAFORM_DIRS; do
+            echo ""
+            echo "📁 Validating directory: $dir"
+
+            cd "$dir"
+
+            # Initialize terraform
+            if terraform init -backend=false > /dev/null 2>&1; then
+              # Validate configuration
+              if terraform validate; then
+                echo "✅ Valid: $dir"
+              else
+                echo "❌ Invalid: $dir"
+                SUCCESS=false
+              fi
+            else
+              echo "⚠️ Could not initialize: $dir" \
+                   "(may require provider configuration)"
+              # Try validation anyway in case it's a simple syntax check
+              if terraform validate; then
+                echo "✅ Valid (syntax): $dir"
+              else
+                echo "❌ Invalid: $dir"
+                SUCCESS=false
+              fi
+            fi
+
+            # Return to root directory
+            cd - > /dev/null
+          done
+
+          echo ""
+          if [ "$SUCCESS" = true ]; then
+            echo "✅ All Terraform configurations are valid"
+          else
+            echo "❌ Some Terraform configurations are invalid"
+            exit 1
+          fi
+
+  summary:
+    needs: [terraform-fmt, terraform-validate]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "## 🏗️ Terraform Format and Validate Results" \
+            >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          FORMAT_RESULT="${{ needs.terraform-fmt.result }}"
+          VALIDATE_RESULT="${{ needs.terraform-validate.result }}"
+          FMT_STATUS="${{ needs.terraform-fmt.outputs.fmt_status }}"
+
+          echo "### Format Check: " >> $GITHUB_STEP_SUMMARY
+          if [ "$FORMAT_RESULT" = "success" ]; then
+            if [ "$FMT_STATUS" = "warning" ]; then
+              echo "⚠️ Formatting issues found (non-blocking)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ All files properly formatted" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "❌ Format check failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Validation Check: " >> $GITHUB_STEP_SUMMARY
+          if [ "$VALIDATE_RESULT" = "success" ]; then
+            echo "✅ All configurations valid" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Validation errors found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Overall result - only fail on validation errors
+          if [ "$VALIDATE_RESULT" = "success" ]; then
+            if [ "$FMT_STATUS" = "warning" ]; then
+              echo "### ⚠️ Overall Result: PASSED WITH WARNINGS"
+              echo "⚠️ **Overall Result: PASSED WITH WARNINGS**" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "💡 Consider running \`terraform fmt -recursive .\` to fix formatting" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### 🎉 Overall Result: PASSED"
+              echo "🎉 **Overall Result: PASSED**" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "### ❌ Overall Result: FAILED"
+            echo "❌ **Overall Result: FAILED**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
