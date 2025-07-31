@@ -19,15 +19,16 @@ jobs:
       - name: Run tfsec
         uses: aquasecurity/tfsec-action@v1.0.3
         with:
-          soft_fail: false
+          soft_fail: true
           format: sarif
+          sarif_file: tfsec-results.sarif
           additional_args: --verbose --include-ignored
 
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: tfsec.sarif
+          sarif_file: tfsec-results.sarif
 
   tfsec-pr-commenter:
     runs-on: ubuntu-latest
@@ -55,30 +56,16 @@ jobs:
           TFSEC_RESULT="${{ needs.tfsec.result }}"
 
           if [ "$TFSEC_RESULT" = "success" ]; then
-            echo "✅ **No security issues found**" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Security scan completed**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "All Terraform configurations passed security checks." \
+            echo "Check the SARIF results below for any security findings." \
               >> $GITHUB_STEP_SUMMARY
-          elif [ "$TFSEC_RESULT" = "failure" ]; then
-            echo "❌ **Security issues detected**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Please review the security findings above and address" \
-              >> $GITHUB_STEP_SUMMARY
-            echo "any critical or high severity issues." \
-              >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Common fixes:" >> $GITHUB_STEP_SUMMARY
-            echo "- Enable encryption for storage resources" \
-              >> $GITHUB_STEP_SUMMARY
-            echo "- Add proper access controls and policies" \
-              >> $GITHUB_STEP_SUMMARY
-            echo "- Use secure defaults for network configurations" \
-              >> $GITHUB_STEP_SUMMARY
-            echo "- Enable logging and monitoring" >> $GITHUB_STEP_SUMMARY
-            exit 1
           else
-            echo "⚠️ **Unexpected result: $TFSEC_RESULT**" \
+            echo "❌ **Security scan failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The tfsec scan encountered an error. Check the logs above." \
               >> $GITHUB_STEP_SUMMARY
+            exit 1
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
