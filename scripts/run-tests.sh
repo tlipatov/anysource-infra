@@ -68,20 +68,15 @@ test_module() {
     
     # Run terraform test
     print_status "INFO" "Running terraform test for $module_name..."
-    if terraform test -no-color > /tmp/terraform_test_output_$module_name.log 2>&1; then
+    if terraform test -no-color; then
         print_status "PASS" "$module_name tests passed"
         ((PASSED_TESTS++))
     else
         print_status "FAIL" "$module_name tests failed"
-        echo "Error output:"
-        cat /tmp/terraform_test_output_$module_name.log | head -20
         ((FAILED_TESTS++))
     fi
     
     ((TOTAL_TESTS++))
-    
-    # Clean up temp file
-    rm -f "/tmp/terraform_test_output_$module_name.log" || true
     
     # Return to original directory
     cd "$original_dir" || exit 1
