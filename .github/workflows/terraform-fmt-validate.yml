@@ -36,7 +36,7 @@ jobs:
           if [ $fmt_exit_code -eq 0 ]; then
             echo "✅ All Terraform files are properly formatted"
             echo "fmt_status=success" >> $GITHUB_OUTPUT
-          elif [ $fmt_exit_code -eq 3 ]; then
+          elif [ $fmt_exit_code -eq 1 ] || [ $fmt_exit_code -eq 3 ]; then
             echo "⚠️ Some Terraform files are not properly formatted"
             echo ""
             echo "To fix formatting issues, run:"
