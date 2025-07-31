@@ -136,6 +136,14 @@ jobs:
             echo "⏭️ No tests found for module: ${{ matrix.module }}"
           fi
 
+  test-module-success:
+    needs: test-modules
+    if: always() && needs.test-modules.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Success Message
+        run: echo "All module tests passed successfully!"
+
   test-summary:
     needs: [detect-changes, test-modules]
     if: always() && needs.detect-changes.outputs.any-changes == 'true'
