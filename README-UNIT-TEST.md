@@ -1,6 +1,6 @@
 # Terraform Module Unit Testing
 
-This repository includes a comprehensive testing framework for Terraform modules using the native `terraform test` command introduced in Terraform 1.6+.
+This repository includes a comprehensive testing framework for Terraform modules using the native `terraform test` command introduced in Terraform 1.6+ but we need terraform 1.12+ for all the features to work.
 
 ## Overview
 
