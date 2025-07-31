@@ -18,6 +18,22 @@ This Terraform infrastructure stack prioritizes stability and reliability throug
 
 The testing-first approach ensures this infrastructure remains a reliable, stable foundation that the community can trust and build upon.
 
+## Code Quality and Security Automation
+
+### Security Scanning with tfsec
+
+Added automated security scanning using tfsec to proactively identify infrastructure vulnerabilities before deployment. This addresses the critical need for security validation in public infrastructure code where misconfigurations can have wide-reaching impact across multiple consumers.
+
+**Why tfsec**: Terraform configurations can contain subtle security misconfigurations that aren't caught by basic validation. Issues like unencrypted storage, overly permissive security groups, or missing access controls can create vulnerabilities in deployed infrastructure.
+
+**Implementation**: The security workflow scans all Terraform files on every change, comments findings directly on pull requests for immediate developer feedback, and integrates with GitHub's Security tab for centralized tracking.
+
+### Code Formatting Standards
+
+Implemented automated Terraform formatting and validation to maintain consistent code style across the repository. While formatting issues generate warnings rather than blocking merges, this ensures professional code quality without hindering development velocity.
+
+**Rationale**: Consistent formatting improves code readability, reduces merge conflicts, and demonstrates professional standards that users expect from public infrastructure modules. The warning-only approach maintains code quality while allowing urgent fixes when needed.
+
 ## Project Requirements Adaptation
 
 ### Original Task Scope vs. Implementation

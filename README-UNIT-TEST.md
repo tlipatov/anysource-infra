@@ -72,16 +72,30 @@ You can also run tests manually for any module:
 
 ## GitHub Actions Integration
 
-The repository includes automated testing via GitHub Actions in `.github/workflows/terraform-module-tests.yml`.
+The repository includes comprehensive automation via multiple GitHub Actions workflows:
 
-### How it Works
+### Test Automation (`.github/workflows/terraform-module-tests.yml`)
 
-The GitHub Action:
+The test workflow:
 1. **Change Detection**: Uses `git diff` to identify which modules have been modified in a pull request
 2. **Matrix Strategy**: Runs tests in parallel for each changed module
 3. **Terraform Setup**: Installs the specified version of Terraform (~1.12)
 4. **Test Execution**: Runs the test script for each modified module
 5. **Results Reporting**: Provides detailed test results and summaries
+
+### Security Scanning (`.github/workflows/terraform-security.yml`)
+
+Added security scanning with tfsec to proactively identify infrastructure security issues. This workflow runs on all code changes and provides:
+- **Vulnerability Detection**: Scans for AWS security misconfigurations and best practice violations
+- **PR Integration**: Comments security findings directly on pull requests for immediate developer feedback
+- **SARIF Upload**: Integrates with GitHub Security tab for centralized security reporting and tracking
+- **Compliance**: Helps maintain security standards across all Terraform configurations, preventing insecure infrastructure from being deployed
+
+### Code Quality (`.github/workflows/terraform-fmt-validate.yml`)
+
+Ensures code quality through:
+- **Format Checking**: Validates Terraform code formatting (shows warnings, doesn't block)
+- **Configuration Validation**: Ensures all Terraform configurations are syntactically correct and valid
 
 ### Trigger Conditions
 
