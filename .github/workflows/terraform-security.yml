@@ -20,10 +20,6 @@ jobs:
         uses: aquasecurity/tfsec-sarif-action@21ded20e8ca120cd9d3d6ab04ef746477542a608
         with:
           sarif_file: tfsec.sarif
-
-      - name: List files
-        run: ls -la
-
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v3
         with:
