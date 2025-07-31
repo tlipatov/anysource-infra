@@ -1,0 +1,145 @@
+---
+name: Terraform Format and Validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  terraform-fmt:
+    runs-on: ubuntu-latest
+    name: Format Check
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12"
+
+      - name: Check Terraform formatting
+        run: |
+          echo "🔍 Checking Terraform formatting across entire repository..."
+
+          # Check formatting recursively
+          terraform fmt -check -diff -recursive .
+
+          if [ $? -eq 0 ]; then
+            echo "✅ All Terraform files are properly formatted"
+          else
+            echo "❌ Some Terraform files are not properly formatted"
+            echo ""
+            exit 1
+          fi
+
+  terraform-validate:
+    runs-on: ubuntu-latest
+    name: Validate
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12"
+
+      - name: Validate Terraform configurations
+        run: |
+          echo "🔍 Validating Terraform configurations..."
+
+          # Find all directories containing .tf files
+          TERRAFORM_DIRS=$(find . -name "*.tf" -type f | \
+            xargs dirname | sort -u)
+
+          if [ -z "$TERRAFORM_DIRS" ]; then
+            echo "⏭️ No Terraform files found"
+            exit 0
+          fi
+
+          SUCCESS=true
+
+          for dir in $TERRAFORM_DIRS; do
+            echo ""
+            echo "📁 Validating directory: $dir"
+
+            cd "$dir"
+
+            # Initialize terraform
+            if terraform init -backend=false > /dev/null 2>&1; then
+              # Validate configuration
+              if terraform validate; then
+                echo "✅ Valid: $dir"
+              else
+                echo "❌ Invalid: $dir"
+                SUCCESS=false
+              fi
+            else
+              echo "⚠️ Could not initialize: $dir" \
+                   "(may require provider configuration)"
+              # Try validation anyway in case it's a simple syntax check
+              if terraform validate; then
+                echo "✅ Valid (syntax): $dir"
+              else
+                echo "❌ Invalid: $dir"
+                SUCCESS=false
+              fi
+            fi
+
+            # Return to root directory
+            cd - > /dev/null
+          done
+
+          echo ""
+          if [ "$SUCCESS" = true ]; then
+            echo "✅ All Terraform configurations are valid"
+          else
+            echo "❌ Some Terraform configurations are invalid"
+            exit 1
+          fi
+
+  summary:
+    needs: [terraform-fmt, terraform-validate]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "## 🏗️ Terraform Format and Validate Results" \
+            >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          FORMAT_RESULT="${{ needs.terraform-fmt.result }}"
+          VALIDATE_RESULT="${{ needs.terraform-validate.result }}"
+
+          echo "### Format Check: " >> $GITHUB_STEP_SUMMARY
+          if [ "$FORMAT_RESULT" = "success" ]; then
+            echo "✅ All files properly formatted" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Formatting issues found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Validation Check: " >> $GITHUB_STEP_SUMMARY
+          if [ "$VALIDATE_RESULT" = "success" ]; then
+            echo "✅ All configurations valid" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Validation errors found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Overall result
+          if [ "$FORMAT_RESULT" = "success" ] && \
+             [ "$VALIDATE_RESULT" = "success" ]; then
+            echo "### 🎉 Overall Result: PASSED"
+            echo "🎉 **Overall Result: PASSED**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Overall Result: FAILED"
+            echo "❌ **Overall Result: FAILED**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
